@@ -3,3 +3,6 @@ output.xlsx
 payment_data.json
 transaction_details.json
 transactions_data.json
+
+~$*.xlsx
+

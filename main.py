@@ -10,19 +10,19 @@ from dateutil import parser
 
 pyt.pytesseract.tesseract_cmd = 'C:/Program Files/Tesseract-OCR/tesseract.exe'  
 
-
-image_dir = "C:/Users/Seng Pan/Can_Do_Crew_AI_Project/Payment_ImageToText/src/CB/"
+image_dir = "C:/Users/Seng Pan/Can_Do_Crew_AI_Project/Payment_ImageToText/src/KBZ/"
 
 # Regular expression patterns for extracting fields
 desired_date_format = "%Y/%m/%d"
 
 transtype_pattern = re.compile(r"(Transaction Type|Type)\s?:?\s?(.+)")
-notes_pattern = re.compile(r"^(Notes|Note|Purpose|Reason)\s?:?\s?(.+)")
-transtime_pattern = re.compile(r"^(Transaction Time|Date and Time|Date & Time|Transaction Date)\s?:?\s?(.+)")
-transno_pattern = re.compile(r"^(Transaction No|Transaction ID)\s?:?\s?(.+)")
+notes_pattern = re.compile(r"^(Notes|Note|Purpose|Reason|Remarks)\s?:?\s?(.+)")
+transtime_pattern = re.compile(r"^(Transaction Time|Date and Time|Date & Time|Transaction Date|Bate and Time)\s?:?\s?(.+)")
+transno_pattern = re.compile(r"^(Transaction No|Transaction ID|‘Transaction Code|Transaction IO)\s?:?\s?(.+)")
 receiver_pattern = re.compile(r"(To|Receiver Name|Send To)\s?:?\s?([A-Za-z0-9\s]+)")
 sender_pattern = re.compile(r"^(From|Sender Name|Send From)\s?:?\s?(.+)")
-amount_data_pattern = re.compile(r"^(Amount|Total Amount)\s?:?\s?(.+)")
+amount_data_pattern = re.compile(r"^(Amount|Total Amount|Amaunt)\s?:?\s?(.+)")
+
 
 def extract_text_from_image(image_path):
     """
@@ -52,7 +52,7 @@ def extract_text_from_image(image_path):
         kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
         sharpened = cv2.filter2D(enhanced_img, -1, kernel)
 
-        # Apply a threshold to convert the image to binary (black and white)
+        # Threshold to convert the image to binary (black and white)
         # Adjust the threshold value to ensure better extraction of gray text
         _, thresh = cv2.threshold(sharpened, 200, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
@@ -63,7 +63,7 @@ def extract_text_from_image(image_path):
         pil_image = Img.fromarray(thresh)
 
         # Use Tesseract to do OCR on the image
-        config = "--psm 6"
+        config = "--psm 6 --dpi 300"
         text = pyt.image_to_string(pil_image, config=config, lang='eng')
         return text
     
@@ -89,29 +89,15 @@ def extract_date_time(date_time_str):
     time_pattern = re.compile(r"\b((1[0-2]|0?[1-9]):[0-5][0-9](?::[0-5][0-9])?\s?[APap][Mm]|(2[0-3]|[01]?[0-9]):[0-5][0-9](?::[0-5][0-9])?)\b")  
 
     try:
-          # Search date and time matches in the input string
-          date_match = date_pattern.search(date_time_str)
-          times_match = time_pattern.search(date_time_str) 
-    
-          # Parse the date part
-          try:
-              if date_match:
-                date_obj = parser.parse(date_match.group())
-                formatted_date = date_obj.strftime("%Y/%m/%d")
-              else:
-                formatted_date = ""
-          except:
-                formatted_date = ""
-          
-          # Parse the time part
-          try:
-              if times_match:
-                time_obj = parser.parse(times_match.group())
-                formatted_time = time_obj.strftime("%H:%M:%S")
-              else:
-                formatted_time = ""
-          except:
-                formatted_time = ""
+        # Search date and time matches in the input string    
+        date_match = date_pattern.search(date_time_str)
+        time_match = time_pattern.search(date_time_str)
+
+        date_obj = parser.parse(date_match.group()) if date_match else None
+        time_obj = parser.parse(time_match.group()) if time_match else None
+
+        formatted_date = date_obj.strftime("%Y/%m/%d") if date_obj else ""
+        formatted_time = time_obj.strftime("%H:%M:%S") if time_obj else ""
         
     except Exception as e:
            print(f"Error parsing date or time: {e}")
@@ -125,15 +111,11 @@ def extract_amount_only(amount_str):
     :param amount_str: amount with negative sign, MMK, Ks
     :return: numeric amount as a string
     """
-
     # formatted_amount = amount_str
-    amount_only_pattern = re.compile(r"-?\d*(?:,\d*)*(?:\.\d{2})?")
-    amount_pattern_match = amount_only_pattern.search(amount_str)
+    amount_only_pattern = re.compile(r"-?\d{1,3}(?:,\d{3})*(?:\.\d{2})?")
+    amount_match = amount_only_pattern.search(amount_str)
     
-    if amount_pattern_match:
-        formatted_amount = amount_pattern_match.group().replace("-","").strip()
-        
-    return formatted_amount
+    return amount_match.group().replace("-", "").strip() if amount_match else None
 
 def extract_transaction_data(text):
     
@@ -203,17 +185,14 @@ for filename in os.listdir(image_dir):
         image_path = os.path.join(image_dir, filename)
 
         try:
-            # Image preprocessing using Pillow
-            # image = Img.open(image_path)
-
             # Extract text using Tesseract
             extracted_text = extract_text_from_image(image_path)
+            print(f"{extracted_text}")
             print(f"Extracted data from {filename}")
 
             # Extract transaction information using regex
             transaction_info = extract_transaction_data(extracted_text)
             print(transaction_info)
-            # transaction_info["File"] = filename  # Optional: Add filename for reference
 
             # Add to list of all transactions
             all_transactions.append(transaction_info)

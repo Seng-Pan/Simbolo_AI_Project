@@ -6,6 +6,7 @@ from PIL import Image as Img
 import pytesseract as pyt
 import re
 from dateutil import parser
+from textblob import TextBlob
 
 
 pyt.pytesseract.tesseract_cmd = 'C:/Program Files/Tesseract-OCR/tesseract.exe'  
@@ -76,6 +77,22 @@ def split_text_into_lines(text):
     lines = text.split('\n')
     return [line.strip() for line in lines if line.strip()]
 
+MONTH_CORRECTIONS = {
+    "Janury": "January", "Februry": "February", "Marh": "March", "Aplil": "April", 
+    "Mayy": "May", "Juen": "June", "Jully": "July", "Agust": "August", 
+    "Septmber": "September", "Octaber": "October", "Novmber": "November", "Decmber": "December"
+}
+
+def correct_month_in_string(date_string):
+    for incorrect_month, correct_month in MONTH_CORRECTIONS.items():
+        if incorrect_month in date_string:
+            return date_string.replace(incorrect_month, correct_month)
+    return date_string
+
+def spell_check_string(text):
+    corrected_text = str(TextBlob(text).correct())
+    return corrected_text
+
 def extract_date_time(date_time_str):
     """
     Extracts date and time from the input string using regex and dateutil parser.
@@ -83,6 +100,12 @@ def extract_date_time(date_time_str):
     :param date_time_str: String containing date and time
     :return: Tdate, time
     """
+
+    # Correct month names in the date string
+    date_time_str = correct_month_in_string(date_time_str)
+
+    # Spell check the date string if needed
+    date_time_str = spell_check_string(date_time_str)
 
     # Define regular expressions to match different date and time formats
     date_pattern = re.compile(r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{1,2} \w+ \d{4}|\w+ \d{1,2}, \d{4})")
@@ -100,7 +123,7 @@ def extract_date_time(date_time_str):
         formatted_time = time_obj.strftime("%H:%M:%S") if time_obj else ""
         
     except Exception as e:
-           print(f"Error parsing date or time: {e}")
+        print(f"Error parsing date or time: {e}")
 
     return formatted_date, formatted_time
 

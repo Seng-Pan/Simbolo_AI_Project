@@ -1,0 +1,13 @@
+streamlit
+pandas
+numpy
+opencv-python-headless
+pytesseract
+Pillow
+XlsxWriter
+gdown
+python-dotenv
+matplotlib
+torchvision
+torch
+textblob
